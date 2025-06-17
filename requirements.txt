@@ -1,0 +1,24 @@
+# Web framework (choose one, or both for experimentation)
+flask
+fastapi
+uvicorn
+
+# File handling and notebook parsing
+nbformat
+zipfile36  # for compatibility with older Python versions
+
+# HTTP requests (for calling Rilla LLM API)
+httpx
+openai  # LiteLLM-compatible clients (they support OpenAI-style)
+
+# Data processing
+pandas
+
+# Optional: file uploads and form handling
+python-multipart
+
+# If you plan to use Jinja templates (for Flask frontend)
+jinja2
+
+# If doing environment variable management (e.g., for API key security)
+python-dotenv
