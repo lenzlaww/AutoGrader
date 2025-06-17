@@ -2,6 +2,8 @@
 
 ## Directory Structure:
 
+### Backend
+
 ```
 backend/
 ├── app.py  # Main entry point
@@ -16,4 +18,16 @@ backend/
 
 ```
 
-## 
+### Frontend
+
+```
+src/
+├── components/
+│   ├── FileUpload.js  # File Upload Component
+│   ├── ResultDisplay.js  # Display Results Component
+├── services/
+│   ├── api.js  # Axios configuration for API calls
+├── App.js
+├── index.js
+└── styles.css  # Global Styles
+```
