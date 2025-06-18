@@ -3,6 +3,7 @@ import axios from "../services/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+
 function FileUpload({ setResults }) {
     const [file, setFile] = useState(null);
     const [rubric, setRubric] = useState("");
@@ -18,21 +19,19 @@ function FileUpload({ setResults }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!file || !rubric) {
-            toast.error("Please upload a file and provide a rubric!");
-            return;
+           toast.error("Please upload a file and provide a rubric!");
+        return;
         }
-
         const formData = new FormData();
         formData.append("file", file);
         formData.append("rubric", rubric);
-
         try {
-            const response = await axios.post("/upload", formData);
-            toast.success("Grading completed!");
-            setResults(response.data); // Pass results to parent
+           const response = await axios.post("/upload", formData); // Use Axios instance to connect
+           toast.success("Grading completed!");
+           setResults(response.data); // Render results in the parent component
         } catch (error) {
-            toast.error("Error processing the file. Please try again.");
-        }
+           toast.error("Error processing the file. Please try again.");
+       }
     };
 
     return (
