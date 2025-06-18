@@ -3,6 +3,9 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os, zipfile, tempfile, nbformat, httpx
+import pandas as pd
+from fastapi.responses import FileResponse
+import re
 
 app = FastAPI()
 
@@ -45,6 +48,8 @@ def parse_rubric(rubric_bytes) -> str:
 
 
 # Util: call Rilla LLM
+
+
 async def get_llm_feedback(rubric: str, code: str) -> dict:
     prompt = f"""You are an auto-grader. Based on the rubric below, score and comment on the student's code.
 
@@ -54,7 +59,17 @@ Rubric:
 Student Code:
 {code}
 
-Return the score (0-10), what is wrong, and what can be improved.
+Your response must follow this format exactly:
+
+Final Score: <a number between 0 and 100>
+
+What is wrong:
+- point 1
+- point 2
+
+What can be improved:
+- suggestion 1
+- suggestion 2
 """
 
     headers = {
@@ -63,17 +78,24 @@ Return the score (0-10), what is wrong, and what can be improved.
     }
 
     payload = {
-        "model": "claude-3-5-haiku",  # ✅ FASTER MODEL (optional but recommended for speed)
+        "model": "claude-3-5-haiku",
         "messages": [{"role": "user", "content": prompt}]
     }
 
-    # ✅ ADD TIMEOUT (60 seconds read timeout)
     timeout = httpx.Timeout(connect=10.0, read=60.0, write=10.0, pool=5.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
         res = await client.post(API_URL, json=payload, headers=headers)
         res.raise_for_status()
-        response = res.json()
-        return response["choices"][0]["message"]["content"]
+        message = res.json()["choices"][0]["message"]["content"]
+
+    # Extract score from message
+    match = re.search(r"Final Score:\s*(\d{1,3})", message)
+    score = int(match.group(1)) if match else None
+
+    return {
+        "score": score,
+        "feedback": message
+    }
 
 
 # === Main Endpoint ===
@@ -85,9 +107,20 @@ async def grade_submission(zipfile: UploadFile = File(...), rubricfile: UploadFi
     rubric = parse_rubric(rubric_bytes)
     notebooks = extract_notebooks(zip_bytes)
 
-    results = {}
+    results = []
     for filename, code in notebooks.items():
-        feedback = await get_llm_feedback(rubric, code)
-        results[filename] = feedback
+        result = await get_llm_feedback(rubric, code)
+        results.append({
+            "notebook": filename,
+            "score": result["score"],
+            "feedback": result["feedback"]
+        })
 
-    return JSONResponse(content={"results": results})
+
+    # ✅ Save as CSV
+    df = pd.DataFrame(results)
+    output_path = os.path.join(tempfile.gettempdir(), "grading_results.csv")
+    df.to_csv(output_path, index=False)
+
+    # ✅ Return downloadable CSV
+    return FileResponse(output_path, media_type='text/csv', filename="grading_results.csv")
