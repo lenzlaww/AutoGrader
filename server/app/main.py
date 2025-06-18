@@ -6,6 +6,11 @@ import os, zipfile, tempfile, nbformat, httpx
 import pandas as pd
 from fastapi.responses import FileResponse
 import re
+import matplotlib.pyplot as plt
+
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
 
 app = FastAPI()
 
@@ -119,8 +124,59 @@ async def grade_submission(zipfile: UploadFile = File(...), rubricfile: UploadFi
 
     # ✅ Save as CSV
     df = pd.DataFrame(results)
-    output_path = os.path.join(tempfile.gettempdir(), "grading_results.csv")
-    df.to_csv(output_path, index=False)
+    csv_path = os.path.join(OUTPUT_DIR, "grading_results.csv")
+    df.to_csv(csv_path, index=False)
 
-    # ✅ Return downloadable CSV
-    return FileResponse(output_path, media_type='text/csv', filename="grading_results.csv")
+    # Save Feedback TXT
+    feedback_text = ""
+    for row in results:
+        feedback_text += f"\n\n===== {row['notebook']} =====\n{row['feedback']}\n"
+    txt_path = os.path.join(OUTPUT_DIR, "grading_feedback.txt")
+    with open(txt_path, "w", encoding="utf-8") as f:
+        f.write(feedback_text)
+
+    # Just return a success message
+    return JSONResponse(content={"message": "Grading complete. Files ready at /csv, /feedback, /plot."})
+
+
+@app.get("/csv")
+def get_csv():
+    csv_path = os.path.join(OUTPUT_DIR, "grading_results.csv")
+    return FileResponse(csv_path, media_type="text/csv", filename="grading_results.csv")
+
+
+@app.get("/feedback")
+def get_feedback():
+    txt_path = os.path.join(OUTPUT_DIR, "grading_feedback.txt")
+    return FileResponse(txt_path, media_type="text/plain", filename="grading_feedback.txt")
+
+
+
+@app.get("/plot")
+def get_plot():
+    csv_path = os.path.join(OUTPUT_DIR, "grading_results.csv")
+    df = pd.read_csv(csv_path).sort_values(by="score", ascending=False)
+
+    plot_path = os.path.join(OUTPUT_DIR, "grading_scores_plot.png")
+    fig_width = max(10, len(df) * 0.6)
+    plt.figure(figsize=(fig_width, 6))
+
+    colors = ["green" if s >= 80 else "orange" if s >= 50 else "red" for s in df["score"]]
+    bars = plt.bar(df["notebook"], df["score"], color=colors)
+
+    for i, bar in enumerate(bars):
+        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1,
+                 f'{df.iloc[i]["score"]}', ha='center', va='bottom', fontsize=8)
+
+    plt.xlabel("Notebook", fontsize=12)
+    plt.ylabel("Score", fontsize=12)
+    plt.title("Student Scores", fontsize=14, fontweight='bold')
+    plt.xticks(rotation=45, ha="right", fontsize=8)
+    plt.yticks(fontsize=10)
+    plt.tight_layout()
+    plt.savefig(plot_path)
+    plt.close()
+
+    return FileResponse(plot_path, media_type="image/png", filename="grading_scores_plot.png")
+
+

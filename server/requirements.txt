@@ -2,7 +2,7 @@
 flask
 fastapi
 uvicorn
-
+matplotlib  # for plotting capabilities
 # File handling and notebook parsing
 nbformat
 zipfile36  # for compatibility with older Python versions
