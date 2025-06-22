@@ -5,6 +5,8 @@ import uvicorn
 import os, zipfile, tempfile, nbformat, httpx
 import pandas as pd
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 import re
 import matplotlib.pyplot as plt
 
@@ -21,6 +23,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 # LiteLLM API setup (Rilla's server)
 API_URL = "https://litellm.rillavoice.com/v1/chat/completions"
@@ -151,32 +156,8 @@ def get_feedback():
     return FileResponse(txt_path, media_type="text/plain", filename="grading_feedback.txt")
 
 
-
-@app.get("/plot")
-def get_plot():
-    csv_path = os.path.join(OUTPUT_DIR, "grading_results.csv")
-    df = pd.read_csv(csv_path).sort_values(by="score", ascending=False)
-
-    plot_path = os.path.join(OUTPUT_DIR, "grading_scores_plot.png")
-    fig_width = max(10, len(df) * 0.6)
-    plt.figure(figsize=(fig_width, 6))
-
-    colors = ["green" if s >= 80 else "orange" if s >= 50 else "red" for s in df["score"]]
-    bars = plt.bar(df["notebook"], df["score"], color=colors)
-
-    for i, bar in enumerate(bars):
-        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 1,
-                 f'{df.iloc[i]["score"]}', ha='center', va='bottom', fontsize=8)
-
-    plt.xlabel("Notebook", fontsize=12)
-    plt.ylabel("Score", fontsize=12)
-    plt.title("Student Scores", fontsize=14, fontweight='bold')
-    plt.xticks(rotation=45, ha="right", fontsize=8)
-    plt.yticks(fontsize=10)
-    plt.tight_layout()
-    plt.savefig(plot_path)
-    plt.close()
-
-    return FileResponse(plot_path, media_type="image/png", filename="grading_scores_plot.png")
-
-
+@app.get("/", response_class=HTMLResponse)
+def serve_index():
+    index_path = os.path.join("static", "index.html")
+    with open(index_path, "r", encoding="utf-8") as f:
+        return f.read()
