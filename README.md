@@ -3,6 +3,12 @@
 
 AutoGrader is a full-stack application developed at the **Vibe Hack Hackathon** to automate grading of Jupyter Notebooks using LLMs. Upload a `.zip` of `.ipynb` files and a `.txt` rubric, and receive structured feedback and scores — instantly!
 
+### Project Built by 
+[Elena Nurullina](https://github.com/ElenkaSan)
+
+[Aryan Jain](https://github.com/aryanj10)
+
+https://github.com/lenzlaww
 ---
 
 ## 🚀 Features
